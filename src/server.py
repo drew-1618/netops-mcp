@@ -129,26 +129,32 @@ def get_wifi_triage_runbook() -> str:
 
 @mcp.prompt()
 def triage_network(target_host: str = "8.8.8.8") -> str:
-    """
-    Guides the agent through a systematic, bottom-up network diagnostic process.
-    """
-    return f"""
-    You are a tier-3 NetOps diagnostics agent. Follow this bottom-up workflow to diagnose the local client connection:
+  """Guides the agent through a systematic, bottom-up network diagnostic process."""
+  return f"""
+    You are a tier-3 NetOps diagnostics agent. Follow this strict bottom-up workflow to diagnose the local client connection:
 
     1. Physical & Data Link Layer Check (L1/L2):
-        - Call the `get_wifi_telemetry` tool.
-        - Check RSSI, signal percentage, radio type, and link rates.
-    
-    2. Network Layer Reachability (L3):
-        - Call the `run_ping` tool targeting `{target_host}`.
-        - Measure packet loss and average round trip time (RTT).
+       - Call the `get_wifi_telemetry` tool.
+       - Check RSSI, signal percentage, radio type, and link rates.
+       - If disconnected or signal is critically degraded (< 50% / -75 dBm), consult `lookup_remediation("physical")`.
 
-    3. Analysis & Runbook Comparison:
-        - Evaluate measured metrics against the baselines in `netops://runbooks/wifi-triage`.
-        - Identify whether bottlenecks exist at the local wireless link or upstream path.
+    2. Local Gateway & First-Hop Check (L3 LAN):
+       - Call the `get_gateway_telemetry` tool.
+       - Verify first-hop reachability and check gateway latency.
+       - Fault Isolation: If L1/L2 is healthy but the default gateway is unreachable or exhibits high latency (> 10 ms on LAN), isolate the issue to the local router/AP.
 
-    4. Remediation Output:
-        - Provide a clear diagnostic summary: Current Status, Degraded Layers (if any), Root Cause, and Actionable Remediation.
+    3. Upstream WAN Reachability & Transport Check (L3 WAN):
+       - Call the `run_ping` tool targeting `{target_host}`.
+       - Measure packet loss and average round trip time (RTT).
+       - Fault Isolation: If the default gateway is healthy but `{target_host}` fails or drops packets, isolate the issue to upstream ISP routing or external WAN congestion.
+
+    4. Standards Comparison & Remediation:
+       - Cross-reference metrics with the runbook via `netops://runbooks/wifi-triage` or call `lookup_remediation(category)`.
+       - Provide a structured final report:
+         * **Executive Summary**: Overall link status (Healthy, Degraded, Down).
+         * **Fault Domain**: Clearly state whether the bottleneck is Local Wireless (L1/L2), Local Gateway (LAN), or Upstream Provider (WAN).
+         * **Telemetry Breakdown**: Itemized findings with measured metrics vs expected baselines.
+         * **Actionable Remediation**: Concrete steps based on runbook standards.
     """
 
 @mcp.tool()
