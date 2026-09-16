@@ -40,6 +40,43 @@ def run_ping(target: str, count: int = 3) -> dict:
         return {"target": target, "reachable": False, "error": f"Ping command timed out at {ping_timeout} seconds"}
 
 @mcp.tool()
+def get_gateway_telemetry() -> dict:
+    """
+    Discover the local default gateway and check first-hop reachability.
+    """
+    try:
+        # query default gateway using Windows host routing table
+        cmd = ["route.exe", "print", "0.0.0.0"]
+        route_timeout = 3   # seconds timeout for route command
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=route_timeout)
+        if res.returncode != 0:
+            return {"found": False, "error": "route.exe execution failed"}
+
+        # Matches lines structured like: Network Destination | Netmask | Gateway | Interface | Metric
+        # Example: 0.0.0.0          0.0.0.0      192.168.1.1    192.168.1.50     35
+        match = re.search(r"0\.0\.0\.0\s+0\.0\.0\.0\s+([0-9\.]+)", res.stdout)
+        if not match:
+            return {"found": False, "error": "No default gateway found in routing table"}
+
+        gw_ip = match.group(1).strip()
+
+        if gw_ip.startswith("127.") or gw_ip == "0.0.0.0":
+            return {"found": False, "error": f"Invalid gateway route detected: {gw_ip}"}
+        
+        # ping gateway directly (2 packets for fast timeout)
+        ping_res = run_ping(gw_ip, count=2)
+        return {
+            "gateway_ip": gw_ip,
+            "first_hop_reachable": ping_res.get("reachable", False),
+            "packet_loss_percent": ping_res.get("packet_loss_percent"),
+            "gateway_latency_ms": ping_res.get("average_latency_ms"),
+        }
+    except subprocess.TimeoutExpired:
+        return {"found": False, "error": f"Gateway query timed out at {route_timeout} seconds"}
+    except Exception as e:
+        return {"found": False, "error": str(e)}
+
+@mcp.tool()
 def get_wifi_telemetry() -> dict:
     """
     Gathers local WiFi interface telemetry such as SSID, signal strength percentage,
