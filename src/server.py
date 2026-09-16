@@ -3,6 +3,8 @@ import subprocess
 from mcp.server.mcpserver import MCPServer
 from pathlib import Path
 
+from src.validators import validate_target, validate_count
+
 # initialize MCP server
 mcp = MCPServer("NetOps-Server")
 
@@ -14,6 +16,15 @@ def run_ping(target: str, count: int = 3) -> dict:
     """ 
     Pings an IP address or hostname to check reachability, average latency, and packet loss.
     """
+    # input validation
+    is_valid_target, target_err = validate_target(target)
+    if not is_valid_target:
+        return {"target": target, "reachable": False, "error": target_err}
+
+    is_valid_count, count_err = validate_count(count)
+    if not is_valid_count:
+        return {"target": target, "reachable": False, "error": count_err}
+    
     cmd = ["ping", "-c", str(count), target]
     ping_timeout = 7   # seconds timeout for ping command
     try:
