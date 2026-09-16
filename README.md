@@ -2,23 +2,6 @@
 
 A Model Context Protocol (MCP) server providing structured, bottom-up network diagnostics (OSI Layers 1–3) for client-side environments. Bridges host network telemetry directly into LLM clients (such as Claude Desktop) via standard `stdio` transport.
 
-## Architecture
-
-```text
- Claude Desktop (Host)
-       │
-       ▼ (stdio via WSL bridge)
- MCP Runtime (server.py)
-   ├── Tools:
-   │    ├── get_wifi_telemetry (L1/L2 via netsh.exe)
-   │    ├── run_ping           (L3 RTT & packet loss)
-   │    └── lookup_remediation (Runbook query engine)
-   ├── Resources:
-   │    └── netops://runbooks/wifi-triage (Standards-backed runbook)
-   └── Prompts:
-        └── triage_network     (Automated bottom-up diagnostic agent)
-```
-
 ## Setup & Installation
 1. **Clone repository & enter environment:**
     ```bash
