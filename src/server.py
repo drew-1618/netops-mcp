@@ -1,7 +1,11 @@
 import re
 import subprocess
-from mcp.server.mcpserver import MCPServer
+import socket
+import time
 from pathlib import Path
+from typing import Any, Dict
+
+from mcp.server.mcpserver import MCPServer
 
 from validators import validate_target, validate_count
 
@@ -127,6 +131,40 @@ def get_wifi_telemetry() -> dict:
 
     except subprocess.TimeoutExpired:
         return {"connected": False, "error": f"netsh command timed out at {wifi_timeout} seconds"}
+
+@mcp.tool()
+def resolve_dns(hostname: str) -> Dict[str, Any]:
+    """
+    Resolves a hostname using the local system reslover & measures resolution latency
+    """
+
+    target = validate_target(hostname)
+
+    start_time = time.perf_counter()
+    try:
+        # resolve IPv4/IPv6 addresses
+        address_info = socket.getaddrinfor(target, None)
+        elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
+
+        # deduplicate resolved IP addresses
+        resolved_ips = list({entry[4][0] for entry in address_info})
+
+        return {
+            "status": "success",
+            "hostname": target,
+            "latency_ms": elapsed_ms,
+            "resolved_ips": resolved_ips,
+            "record_cound": len(resolved_ips)
+        }
+    except socket.gaierror as e:
+        elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
+        return {
+            "status": "failed",
+            "hostname": target,
+            "latency_ms": elapsed_ms,
+            "error": str(e),
+            "resolved_ips": []
+        }
     
 @mcp.resource("netops://runbooks/wifi-triage")
 def get_wifi_triage_runbook() -> str:
@@ -180,10 +218,11 @@ def triage_connection_issue(target_host: str = "8.8.8.8") -> str:
 
     Follow this systematic investigation workflow:
     1. First, read the internal operational runbook at 'runbook://wifi-triage' to understand target SLA thresholds.
-    2. Inspect the local Layer 1/2 physical link by querying Wi-Fi telemetry and interface statistics.
-    3. Check Layer 3 gateway and external reachability by pinging {target_host}.
-    4. Synthesize your findings:
-       - Identify the probable failing layer (Physical, Link, Network).
+    2. Inspect the local Layer 1/2 physical / data link by querying Wi-Fi telemetry and interface statistics.
+    3. If '{target_host}' is a domain name (not a raw IP), execute DNS resolution to check lookup latency and query success.
+    4. Check Layer 3 gateway and external reachability by pinging {target_host}.
+    5. Synthesize your findings:
+       - Identify the probable failing layer (Physical, Link, Network, DNS).
        - State whether latency/loss violates our runbook thresholds.
        - Recommend concrete remediation steps or specify escalation paths.
     """
