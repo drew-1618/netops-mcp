@@ -7,7 +7,7 @@ from typing import Any, Dict
 
 from mcp.server.mcpserver import MCPServer
 
-from validators import validate_target, validate_count
+from src.validators import validate_target, validate_count
 
 # initialize MCP server
 mcp = MCPServer("NetOps-Server")
@@ -138,12 +138,21 @@ def resolve_dns(hostname: str) -> Dict[str, Any]:
     Resolves a hostname using the local system reslover & measures resolution latency
     """
 
-    target = validate_target(hostname)
+    is_valid, error_msg = validate_target(hostname)
+    if not is_valid:
+        return {
+            "status": "failed",
+            "hostname": hostname,
+            "latency_ms": 0.0,
+            "error": error_msg,
+            "resolved_ips": [],
+        }
 
+    target = hostname.strip()
     start_time = time.perf_counter()
     try:
         # resolve IPv4/IPv6 addresses
-        address_info = socket.getaddrinfor(target, None)
+        address_info = socket.getaddrinfo(target, None)
         elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
 
         # deduplicate resolved IP addresses
