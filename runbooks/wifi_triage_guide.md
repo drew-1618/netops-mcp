@@ -30,3 +30,15 @@
 - **Remediation**:
   - Check for local bandwidth saturation (large downloads, heavy backups).
   - Restart local residential gateway/modem to clear buffer queues.
+
+  ## 4. Application / Network Service Layer: DNS Resolution
+- **Metric**: Lookup Latency (ms) / Query Success State
+- **Standard Reference**: RFC 1035 (Domain Names) / IETF RFC 8484
+- **Healthy**: Resolution latency < 50 ms; returns valid A/AAAA records (0% error).
+- **Degraded**: Latency > 150 ms (slow resolver responses, recursive query timeouts).
+- **Failed**: `NXDOMAIN`, `gaierror` (lookup failure), or query timeouts.
+- **Impact**: Web pages stall during initial connection handshakes, services appear completely unreachable even if raw IP reachability (ICMP) is healthy.
+- **Remediation**:
+  - Test external fallback resolvers (e.g., `1.1.1.1` or `8.8.8.8`) to isolate local vs. upstream DNS outages.
+  - Flush the local OS resolver cache (`ipconfig /flushdns` or `systemd-resolve --flush-caches`).
+  - Verify DHCP-assigned nameservers on the gateway or interface.
