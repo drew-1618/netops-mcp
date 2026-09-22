@@ -3,7 +3,7 @@ import subprocess
 from mcp.server.mcpserver import MCPServer
 from pathlib import Path
 
-from src.validators import validate_target, validate_count
+from validators import validate_target, validate_count
 
 # initialize MCP server
 mcp = MCPServer("NetOps-Server")
@@ -166,6 +166,26 @@ def triage_network(target_host: str = "8.8.8.8") -> str:
          * **Fault Domain**: Clearly state whether the bottleneck is Local Wireless (L1/L2), Local Gateway (LAN), or Upstream Provider (WAN).
          * **Telemetry Breakdown**: Itemized findings with measured metrics vs expected baselines.
          * **Actionable Remediation**: Concrete steps based on runbook standards.
+    """
+
+@mcp.prompt()
+def triage_connection_issue(target_host: str = "8.8.8.8") -> str:
+    """
+    Prompt template guiding the LLM through a structured L1-L3 network triage
+    """
+
+    return f"""
+    You are an expert Network Operations Center (NOC) triage engineer.
+    A user reported connectivity issues reaching {target_host}.
+
+    Follow this systematic investigation workflow:
+    1. First, read the internal operational runbook at 'runbook://wifi-triage' to understand target SLA thresholds.
+    2. Inspect the local Layer 1/2 physical link by querying Wi-Fi telemetry and interface statistics.
+    3. Check Layer 3 gateway and external reachability by pinging {target_host}.
+    4. Synthesize your findings:
+       - Identify the probable failing layer (Physical, Link, Network).
+       - State whether latency/loss violates our runbook thresholds.
+       - Recommend concrete remediation steps or specify escalation paths.
     """
 
 @mcp.tool()
