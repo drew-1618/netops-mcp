@@ -1,10 +1,10 @@
 import ipaddress
 import re
 
-# RFC 1123 compliant hostname validation
-# labels 1-63 chars, total max 253 chars, no leading/trailing hyphens
+# allows 1-63 chars per label, letters/numbers/hyphens (not starting/ending with hyphen), separated by dots
 HOSTNAME_REGEX = re.compile(
-    r"^(?=.{1,253}$)(?!-)[A-Za-z0-9-]{1,63}(?::[A-Za-z0-9-]{1,63})*$"
+    r"^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$|"
+    r"^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$"
 )
 
 def validate_target(target: str) -> tuple[bool, str]:
