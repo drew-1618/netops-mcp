@@ -73,8 +73,7 @@ def get_incidents(
         params.append(status.upper())
 
     if conditions:
-        query += " "
-        " WHERE " + " AND ".join(conditions)
+        query += " WHERE " + " AND ".join(conditions)
 
     query += " ORDER BY created_at DESC LIMIT ?"
     params.append(limit)
