@@ -83,6 +83,7 @@ Add the server to your Claude Desktop configuration file (`%APPDATA%\Claude\clau
 | `resolve_dns` | `hostname: str` | Resolves hostnames via local resolver and measures DNS resolution latency in ms. |
 | `lookup_remediation` | `category: str` | Extracts specific runbook remediation sections (`physical`, `packet_loss`, `latency`, `dns`). |
 | `create_incident_ticket`| `target`, `failing_layer`, `summary`, `severity` | Generates a unique incident ID (`INC-XXXXXXXX`) and records it in SQLite. |
+| `query_incident_history` | `target: Optional[str]`, `status: Optional[str]`, `limit: int = 5` | Queries past incident records to check for recurring failures or open tickets. |
 
 ### Resources
 | URI | Description |

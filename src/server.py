@@ -265,6 +265,7 @@ def triage_network(target_host: str = "8.8.8.8") -> str:
 
     1. Operational Standards Ingestion:
        - Read the reference runbook at 'netops://runbooks/network-triage' to establish SLA baselines for RSSI, packet loss, RTT, and DNS latency.
+       - Call `query_incident_history(target='{target_host}')` to check if this target has recurring failures or open tickets.
 
     2. Layer 1/2 (Physical & Data Link Check):
        - Query Wi-Fi telemetry and interface statistics.
@@ -285,6 +286,7 @@ def triage_network(target_host: str = "8.8.8.8") -> str:
     6. Synthesis & Incident Escalation:
        - Present a structured summary: Link Status, Fault Domain (Local Wi-Fi, LAN Gateway, DNS, or WAN), and Metric Violations.
        - If an SLA violation or outage is confirmed, call 'create_incident_ticket' with the target, failing layer, and diagnostic summary.
+       - If recurring incidents were found, note them in the summary and elevate ticket severity if appropriate.
        - If all checks pass within thresholds, provide recommendations without opening a ticket.
     """
 

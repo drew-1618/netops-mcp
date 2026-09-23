@@ -59,6 +59,7 @@ Whenever conducting a triage workflow, you MUST format your final response using
 - **Root Cause Analysis:** Concise, 1-2 sentence technical summary.
 
 ### 3. Operational Action
+- **Incident History:** [No Prior Incidents | Recurring Issue (Previous: INC-XXXXX)]
 - **Incident Escalation:** [None Required | Ticket Created: INC-XXXXX | Operator Confirmation Required]
 - **Recommended Remediation:** Bulleted runbook steps.
 
