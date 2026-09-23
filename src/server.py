@@ -5,10 +5,10 @@ import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from mcp.server.mcpserver import MCPServer
 
-from src.db import log_incident
+from src.db import log_incident, get_incidents
 from src.validators import validate_target, validate_count
 
 # initialize MCP server
@@ -216,8 +216,31 @@ def create_incident_ticket(
         "message": f"Incident ticket {ticket_id} opened and logged successfully",
         "ticket": ticket_payload,
     }
-    
-    
+
+@mcp.tool()
+def query_incident_history(
+    target: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 5
+) -> Dict[str, Any]:
+    """
+    Queries past incident tickets to identify recurring failures, historical context, or open issues
+    """
+
+    try:
+        records = get_incidents(target=target, status=status, limit=limit)
+        return {
+            "status": "success",
+            "count": len(records),
+            "incidents": records
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Failed to query incidents: {e}",
+            "incidents": []
+        }
+
 @mcp.resource("netops://runbooks/network-triage")
 def get_network_triage_runbook() -> str:
     """
