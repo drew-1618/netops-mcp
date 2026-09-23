@@ -2,11 +2,13 @@ import re
 import subprocess
 import socket
 import time
+import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict
-
 from mcp.server.mcpserver import MCPServer
 
+from src.db import log_incident
 from src.validators import validate_target, validate_count
 
 # initialize MCP server
@@ -163,7 +165,7 @@ def resolve_dns(hostname: str) -> Dict[str, Any]:
             "hostname": target,
             "latency_ms": elapsed_ms,
             "resolved_ips": resolved_ips,
-            "record_cound": len(resolved_ips)
+            "record_count": len(resolved_ips)
         }
     except socket.gaierror as e:
         elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
@@ -174,66 +176,93 @@ def resolve_dns(hostname: str) -> Dict[str, Any]:
             "error": str(e),
             "resolved_ips": []
         }
+
+@mcp.tool()
+def create_incident_ticket(
+    target: str,
+    failing_layer: str,
+    summary: str,
+    severity: str = "medium"
+) -> Dict[str, Any]:
+    """
+    Creates a structured operational incident ticket payload for escalation
+    """
+
+    ticket_id = f"INC-{uuid.uuid4().hex[:8].upper()}"
+    timestamp = datetime.now(timezone.utc).isoformat()
+
+    ticket_payload = {
+        "ticket_id": ticket_id,
+        "created_at_utc": timestamp,
+        "status": "OPEN",
+        "severity": severity.lower(),
+        "target": target,
+        "failing_layer": failing_layer,
+        "summary": summary,
+    }
+
+    # persist locally
+    try:
+        log_incident(ticket_payload)
+    except Exception as e:
+        # don't crash MCP response if disk logging as an issue
+        return {
+            "status": "warning",
+            "message": f"Ticket generated but persistence failed: {e}",
+            "ticket": ticket_payload,
+        }
+    return {
+        "status": "created",
+        "message": f"Incident ticket {ticket_id} opened and logged successfully",
+        "ticket": ticket_payload,
+    }
     
-@mcp.resource("netops://runbooks/wifi-triage")
-def get_wifi_triage_runbook() -> str:
+    
+@mcp.resource("netops://runbooks/network-triage")
+def get_network_triage_runbook() -> str:
     """
-    Exposes standard-backed WiFi and network triage guidelines as a runbook resource.
+    Exposes standard-backed network triage guidelines as a runbook resource.
     """
-    doc_path = RUNBOOKS_DIR / "wifi_triage_guide.md"
+    doc_path = RUNBOOKS_DIR / "network_triage_guide.md"
     if not doc_path.exists():
         return f"Error: Runbook not found at {doc_path}"
     return doc_path.read_text(encoding="utf-8")
 
 @mcp.prompt()
 def triage_network(target_host: str = "8.8.8.8") -> str:
-  """Guides the agent through a systematic, bottom-up network diagnostic process."""
-  return f"""
-    You are a tier-3 NetOps diagnostics agent. Follow this strict bottom-up workflow to diagnose the local client connection:
-
-    1. Physical & Data Link Layer Check (L1/L2):
-       - Call the `get_wifi_telemetry` tool.
-       - Check RSSI, signal percentage, radio type, and link rates.
-       - If disconnected or signal is critically degraded (< 50% / -75 dBm), consult `lookup_remediation("physical")`.
-
-    2. Local Gateway & First-Hop Check (L3 LAN):
-       - Call the `get_gateway_telemetry` tool.
-       - Verify first-hop reachability and check gateway latency.
-       - Fault Isolation: If L1/L2 is healthy but the default gateway is unreachable or exhibits high latency (> 10 ms on LAN), isolate the issue to the local router/AP.
-
-    3. Upstream WAN Reachability & Transport Check (L3 WAN):
-       - Call the `run_ping` tool targeting `{target_host}`.
-       - Measure packet loss and average round trip time (RTT).
-       - Fault Isolation: If the default gateway is healthy but `{target_host}` fails or drops packets, isolate the issue to upstream ISP routing or external WAN congestion.
-
-    4. Standards Comparison & Remediation:
-       - Cross-reference metrics with the runbook via `netops://runbooks/wifi-triage` or call `lookup_remediation(category)`.
-       - Provide a structured final report:
-         * **Executive Summary**: Overall link status (Healthy, Degraded, Down).
-         * **Fault Domain**: Clearly state whether the bottleneck is Local Wireless (L1/L2), Local Gateway (LAN), or Upstream Provider (WAN).
-         * **Telemetry Breakdown**: Itemized findings with measured metrics vs expected baselines.
-         * **Actionable Remediation**: Concrete steps based on runbook standards.
     """
-
-@mcp.prompt()
-def triage_connection_issue(target_host: str = "8.8.8.8") -> str:
-    """
-    Prompt template guiding the LLM through a structured L1-L3 network triage
+    Guides the agent through a disciplined, bottom-up Layer 1-3 network diagnostic sequence
     """
 
     return f"""
-    You are an expert Network Operations Center (NOC) triage engineer.
-    A user reported connectivity issues reaching {target_host}.
+    You are a Tier-2/3 Network Operations Center (NOC) diagnostics agent.
+    A connectivity incident has been reported for target destination: '{target_host}'.
 
-    Follow this systematic investigation workflow:
-    1. First, read the internal operational runbook at 'runbook://wifi-triage' to understand target SLA thresholds.
-    2. Inspect the local Layer 1/2 physical / data link by querying Wi-Fi telemetry and interface statistics.
-    3. If '{target_host}' is a domain name (not a raw IP), execute DNS resolution to check lookup latency and query success.
-    4. Check Layer 3 gateway and external reachability by pinging {target_host}.
-    5. Synthesize your findings:
-       - Identify the probable failing layer (Physical, Link, Network, DNS).
-       - State whether latency/loss violates our runbook thresholds.
-       - Recommend concrete remediation steps or specify escalation paths.
+    Execute the following systematic, bottom-up triage workflow:
+
+    1. Operational Standards Ingestion:
+       - Read the reference runbook at 'netops://runbooks/network-triage' to establish SLA baselines for RSSI, packet loss, RTT, and DNS latency.
+
+    2. Layer 1/2 (Physical & Data Link Check):
+       - Query Wi-Fi telemetry and interface statistics.
+       - Evaluate signal strength (RSSI), link rates, and radio status against runbook thresholds.
+
+    3. Layer 3 (LAN / First-Hop Gateway Check):
+       - Call the `get_gateway_telemetry` tool to discover and verify first-hop reachability.
+       - Fault Isolation: If L1/2 is healthy but gateway latency exceeds threshold (>10-20 ms) or drops packets, isolate fault domain to Local LAN / Router.
+
+    4. Application / Service Layer (DNS Resolution):
+       - If '{target_host}' is a domain name, execute DNS resolution.
+       - Fault Isolation: If the query fails (NXDOMAIN/timeout) or latency exceeds 150 ms, isolate fault domain to DNS / Resolver.
+
+    5. Layer 3 (WAN / Upstream Reachability Check):
+       - Ping target '{target_host}' to evaluate end-to-end packet loss and latency.
+       - Fault Isolation: If the gateway is clean but '{target_host}' fails, isolate fault domain to Upstream WAN / External Routing.
+
+    6. Synthesis & Incident Escalation:
+       - Present a structured summary: Link Status, Fault Domain (Local Wi-Fi, LAN Gateway, DNS, or WAN), and Metric Violations.
+       - If an SLA violation or outage is confirmed, call 'create_incident_ticket' with the target, failing layer, and diagnostic summary.
+       - If all checks pass within thresholds, provide recommendations without opening a ticket.
     """
 
 @mcp.tool()
@@ -243,7 +272,7 @@ def lookup_remediation(category: str) -> dict:
     
     Valid categories: 'physical' (or 'signal', 'L1'), 'packet_loss' (or 'loss'), 'latency' (or 'RTT', 'bufferbload').
     """
-    doc_path = RUNBOOKS_DIR / "wifi_triage_guide.md"
+    doc_path = RUNBOOKS_DIR / "network_triage_guide.md"
     if not doc_path.exists():
         return {"error": f"Runbook missing at {doc_path}"}
 
@@ -258,7 +287,10 @@ def lookup_remediation(category: str) -> dict:
         "loss": "Packet Loss",
         "latency": "Latency",
         "rtt": "Latency",
-        "bufferbloat": "Latency"
+        "bufferbloat": "Latency",
+        "dns": "DNS",
+        "resolution": "DNS",
+        "nameserver": "DNS",
     }
 
     target_keyword = category_map.get(category.lower().strip())
