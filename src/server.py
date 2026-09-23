@@ -100,7 +100,7 @@ def get_wifi_telemetry() -> dict:
     radio type, and link rates.
     """
     cmd = ["netsh.exe", "wlan", "show", "interfaces"]
-    wifi_timeout = 5   # seconds timeout for WiFi telemtry command
+    wifi_timeout = 5   # seconds timeout for WiFi telemetry command
 
     try:
         res = subprocess.run(cmd, capture_output=True, text=True, timeout=wifi_timeout)
@@ -137,7 +137,7 @@ def get_wifi_telemetry() -> dict:
 @mcp.tool()
 def resolve_dns(hostname: str) -> Dict[str, Any]:
     """
-    Resolves a hostname using the local system reslover & measures resolution latency
+    Resolves a hostname using the local system resolver & measures resolution latency
     """
 
     is_valid, error_msg = validate_target(hostname)

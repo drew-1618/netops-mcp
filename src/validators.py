@@ -20,7 +20,7 @@ def validate_target(target: str) -> tuple[bool, str]:
 
   # reject obvious flagh injections or command chaining
   if cleaned.startswith("-") or any(char in cleaned for char in [";", "&", "|", "`", "$", " ", "\t", "\n"]):
-    return (False, f"Target contains invalid of potentially malicious characters: {target}")
+    return (False, f"Target contains invalid or potentially malicious characters: {target}")
 
   # check if valid IP
   try:
