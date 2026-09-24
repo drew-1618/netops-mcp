@@ -52,6 +52,25 @@ def log_incident(ticket: Dict[str, Any]) -> None:
         ),
         )
 
+def resolve_incident(ticket_id: str, resolution_note: str) -> bool:
+    """
+    Updates an incident's status to RESOLVED with notes and timestamp
+    """
+
+    init_db()
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            UPDATE incidents
+            SET status = 'RESOLVED',
+                summary = summary || ' | Resolution: ' || ?
+            WHERE ticket_id = ?
+            """,
+            (resolution_note, ticket_id)
+        )
+        return cursor.rowcount > 0
+
 def get_incidents(
         target: Optional[str] = None,
         status: Optional[str] = None,

@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 from mcp.server.mcpserver import MCPServer
 
-from src.db import log_incident, get_incidents
+from src.db import log_incident, get_incidents, resolve_incident
 from src.validators import validate_target, validate_count
 
 # initialize MCP server
@@ -216,6 +216,29 @@ def create_incident_ticket(
         "message": f"Incident ticket {ticket_id} opened and logged successfully",
         "ticket": ticket_payload,
     }
+
+@mcp.tool()
+def resolve_incident_ticket(ticket_id: str, resolution_note: str) -> Dict[str, Any]:
+    """
+    Resolves an open ticket after connectivity or service restoration is confirmed
+    """
+
+    try:
+        updated = resolve_incident(ticket_id=ticket_id, resolution_note=resolution_note)
+        if updated:
+            return {
+                "status": "success",
+                "message": f"Incident {ticket_id} marked as RESOLVED"
+            }
+        return {
+            "status": "error",
+            "message": f"No ticket found matching {ticket_id}"
+        }
+    except Exception as e:
+        return {
+            "message": "error",
+            "message": f"Failed to resolve ticket: {e}"
+        }
 
 @mcp.tool()
 def query_incident_history(
