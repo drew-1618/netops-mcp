@@ -43,6 +43,10 @@
   - Flush the local OS resolver cache (`ipconfig /flushdns` or `systemd-resolve --flush-caches`).
   - Verify DHCP-assigned nameservers on the gateway or interface.
 
+## Operational Escalation & Resolution Policy
+1. Telemetry Restoration: When automated re-testing of an incident's target confirms healthy reachability, the agent MUST resolve the ticket using `resolve_incident_ticket`.
+2. Administrative Resolution: An operator has authoritative command over incident lifecycles. If the operator explicitly instructs the agent to close, cancel, or resolve a ticket (e.g., test cleanup, decommissioned host, false positive, out-of-scope target), the agent MUST immediately invoke `resolve_incident_ticket` with the operator's stated rationale recorded in the resolution note.
+
 ## Response Formatting Contract
 Whenever conducting a triage workflow, you MUST format your final response using the following exact structure every time. Do not omit the table or substitute conversational paragraphs for standard layers:
 ### 1. Telemetry Summary

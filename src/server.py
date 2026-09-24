@@ -220,7 +220,11 @@ def create_incident_ticket(
 @mcp.tool()
 def resolve_incident_ticket(ticket_id: str, resolution_note: str) -> Dict[str, Any]:
     """
-    Resolves an open ticket after connectivity or service restoration is confirmed
+    Closes or resolves an incident ticket
+
+    Accepts resolutions based on automated telemetry verification ('verified_recovery') 
+    OR authorized human operator workflows ('operator_action', e.g. decommissioned target, 
+    synthetic test cleanup, duplicate triage, or administrative closure)
     """
 
     try:
